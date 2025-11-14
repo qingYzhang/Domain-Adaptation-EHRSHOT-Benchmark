@@ -38,9 +38,6 @@ class GPT(nn.Module):
             )
         )
 
-        for param in self.transformer.parameters():
-            param.requires_grad = False
-
         self.rope_cache: Optional[RoPECache] = None
         self.mask_cache: Optional[torch.Tensor] = None
         self.kv_caches: List[KVCache] = []

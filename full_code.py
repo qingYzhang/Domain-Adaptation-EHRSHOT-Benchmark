@@ -248,7 +248,7 @@ def train(
                                 step = state["global_step"]
                             )
                     fabric.barrier()
-                    if results["Sensitivity"] > best_metric and results["Specificity"] >= 0.985:
+                    if results["Sensitivity"] > best_metric and results["Specificity"] >= 0.99:
                         best_metric =  results["Sensitivity"]                                
                         output_path = os.path.join(args.output_dir, f"best-{args.seed}.pth")
                         fabric.print(f"Saving model checkpoint to {output_path}")
@@ -351,7 +351,10 @@ def validate(fabric: L.Fabric, model: torch.nn.Module, eval_dataloader: DataLoad
                 "preds": total_preds,
                 "targets": total_targets
             }, f)        
-    f1,roc_auc,accuracy,average_precision,sensitivity,specificity = eval_metrics(total_preds,total_targets)
+    # print(1)
+    f1, roc_auc, accuracy, average_precision, sensitivity, specificity, sensitivity_at_99_spec, threshold_99_spec = eval_metrics(total_preds, total_targets).values()
+    # print(3)
+    # print("results:", f1, roc_auc, accuracy, average_precision, sensitivity, specificity, sensitivity_at_99_spec, threshold_99_spec)
     results = {
         "F1":f1,
         "Accuracy":accuracy,
@@ -359,11 +362,15 @@ def validate(fabric: L.Fabric, model: torch.nn.Module, eval_dataloader: DataLoad
         "AUPRC":average_precision,
         "Sensitivity":sensitivity,
         "Specificity":specificity,
+        "Sensitivity_at_99_Specificity":sensitivity_at_99_spec,
+        "Threshold_at_99_Specificity":threshold_99_spec,
         "valid/loss":val_loss.item()
     }
 
     model.reset_cache()
     model.train()
+    # print(results["Sensitivity"])
+    # print(type(results["Sensitivity"]))
     return results
 
 def get_dataloader(data_file_path: str,batch_size:int, num_workers: int, block_size: int)->DataLoader:

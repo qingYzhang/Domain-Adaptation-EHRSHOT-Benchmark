@@ -21,7 +21,7 @@ import numpy as np
 import re
 import lightning as L
 from lightning.fabric.strategies import FSDPStrategy
-from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, f1_score, recall_score
+from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, f1_score, recall_score, roc_curve
 
 def find_multiple(n: int, k: int) -> int:
     assert k > 0
@@ -518,17 +518,55 @@ def get_default_supported_precision(training: bool) -> str:
 def convert_to_numpy(preds,targets):
     return preds.detach().cpu().numpy(),targets.detach().cpu().numpy()
 
-def eval_metrics(total_preds_probs, total_targets):
-    # Convert probabilities to binary labels
+def eval_metrics(total_preds_probs, total_targets, specificity_target=0.99):
+    # print(2)
+    # Convert probabilities to binary labels with default threshold 0.5
     total_preds_label = (total_preds_probs >= 0.5).astype(int)
-    # Calculate evaluation metrics
+    # Standard metrics
     f1 = f1_score(total_targets, total_preds_label, average='macro', zero_division=1)
     accuracy = accuracy_score(total_targets, total_preds_label)
-    average_precision = average_precision_score(total_targets, total_preds_probs)  ## AUPRC as saving criterion
+    average_precision = average_precision_score(total_targets, total_preds_probs)
     roc_auc = roc_auc_score(total_targets, total_preds_probs)
-    sensitivity = recall_score(total_targets, total_preds_label, pos_label=1, zero_division=1)
-    specificity = recall_score(total_targets, total_preds_label, pos_label=0, zero_division=1)
-    return f1, roc_auc, accuracy, average_precision, sensitivity, specificity
+    sensitivity_default = recall_score(total_targets, total_preds_label, pos_label=1, zero_division=1)
+    # print(sensitivity_default,"sensitivity_default")
+    specificity_default = recall_score(total_targets, total_preds_label, pos_label=0, zero_division=1)
+    # --- Sensitivity at fixed 99% specificity ---
+    fpr, tpr, thresholds = roc_curve(total_targets, total_preds_probs)  # fpr = 1 - specificity
+    specificity = 1 - fpr
+    # Find threshold where specificity >= 0.99
+    valid_idx = np.where(specificity >= specificity_target)[0]
+    if len(valid_idx) == 0:
+        sensitivity_at_99_spec = 0.0
+        threshold_99_spec = None
+    else:
+        # Choose the threshold with max sensitivity among those meeting specificity target
+        best_idx = valid_idx[np.argmax(tpr[valid_idx])]
+        sensitivity_at_99_spec = tpr[best_idx]
+        threshold_99_spec = thresholds[best_idx]
+    # print("returning metrics", f1, roc_auc, accuracy, average_precision, sensitivity_default, specificity_default, sensitivity_at_99_spec, threshold_99_spec)
+    return {
+        "f1": f1,
+        "roc_auc": roc_auc,
+        "accuracy": accuracy,
+        "average_precision": average_precision,
+        "sensitivity_default": sensitivity_default,
+        "specificity_default": specificity_default,
+        "sensitivity_at_99_specificity": sensitivity_at_99_spec,
+        "threshold_for_99_specificity": threshold_99_spec
+    }
+
+
+# def eval_metrics(total_preds_probs, total_targets):
+#     # Convert probabilities to binary labels
+#     total_preds_label = (total_preds_probs >= 0.5).astype(int)
+#     # Calculate evaluation metrics
+#     f1 = f1_score(total_targets, total_preds_label, average='macro', zero_division=1)
+#     accuracy = accuracy_score(total_targets, total_preds_label)
+#     average_precision = average_precision_score(total_targets, total_preds_probs)  ## AUPRC as saving criterion
+#     roc_auc = roc_auc_score(total_targets, total_preds_probs)
+#     sensitivity = recall_score(total_targets, total_preds_label, pos_label=1, zero_division=1)
+#     specificity = recall_score(total_targets, total_preds_label, pos_label=0, zero_division=1)
+#     return f1, roc_auc, accuracy, average_precision, sensitivity, specificity
 
 
 def check_nvlink_connectivity(fabric=None):

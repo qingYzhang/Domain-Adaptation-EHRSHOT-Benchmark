@@ -8,8 +8,8 @@ def args_parser():
     parser = argparse.ArgumentParser(description="Convert EHRShot patients to NHIRD format")
     parser.add_argument("--this_version", type=int, required=True, help="This version of the mapping")
     parser.add_argument("--mapping_version", type=int, default=7, help="Mapping version to use")
-    parser.add_argument("--icd_score_threshold", type=float, default=0.85, help="Score threshold for ICD codes")
-    parser.add_argument("--order_score_threshold", type=float, default=0.85, help="Score threshold for order codes")
+    parser.add_argument("--icd_score_threshold", type=float, default=0.8, help="Score threshold for ICD codes")
+    parser.add_argument("--order_score_threshold", type=float, default=0.8, help="Score threshold for order codes")
     parser.add_argument("--n_jobs", type=int, default=8, help="Number of parallel jobs")
     
     return parser.parse_args()
@@ -214,7 +214,7 @@ if __name__ == "__main__":
         "hcpcs": json.load(open("mapping/hcpcs_to_nhird_code.json"))
     }  
 
-    ehrshot_patients = json.load(open("ehrshot_patient.json"))
-    ehrshot_patient_births = json.load(open("ehrshot_patient_birth.json"))
+    ehrshot_patients = json.load(open("../EHR_dataset/ehrshot_patient.json"))
+    ehrshot_patient_births = json.load(open("../EHR_dataset/ehrshot_patient_birth.json"))
 
     Parallel(n_jobs=args.n_jobs)(delayed(file_io)(f"ehrshot_in_nhird_patients_v{args.this_version}.json", patients, mapping, args.mapping_version, args.icd_score_threshold, args.order_score_threshold) for patients in patient_batches(ehrshot_patients, args.n_jobs))

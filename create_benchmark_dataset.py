@@ -158,8 +158,12 @@ def load_model_on_device(pretrained_model_path, device):
 
     # config = Config(**config_data)
     model = GPT(config).to(device)
+    print(1)
     checkpoint = torch.load(os.path.join(pretrained_model_path, "lit_model.pth"), map_location=device) 
-    model.load_state_dict(checkpoint["model"])
+    print(2)
+    # print(checkpoint.keys())
+    model.load_state_dict(checkpoint, strict=False)
+    # model.load_state_dict(checkpoint["model"])
     model.eval()
     return model
 
@@ -247,7 +251,7 @@ if __name__ == "__main__":
         # 'new_acutemi'
     ]
 
-    patients = load_patients("ehrshot_in_nhird_patients_v800.json")
+    patients = load_patients("/data/user_data/stevenz3/data/ehrshot_in_nhird_patients_v800.json")
     if args.model_size == "1b":
         pretrained_model_path = "CatchFM-1b"
         batch_size = 16
@@ -255,7 +259,8 @@ if __name__ == "__main__":
         pretrained_model_path = "CatchFM-2.4b"
         batch_size = 16
     else:
-        pretrained_model_path = "/data/stevenz3/EHR/finetune/finetune_0.85"    
+        # pretrained_model_path = "/data/user_data/stevenz3/160m_pretained/0.35/"    
+        pretrained_model_path = "/data/group_data/cx_healthcare/nhird_pretrained/flop_1e18/pythia-160m/step-4800-ckpt-converted/"
         batch_size = 16
 
     # Get number of available GPUs

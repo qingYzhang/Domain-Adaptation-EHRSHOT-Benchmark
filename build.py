@@ -7,14 +7,14 @@ for fine-tuning Catch-FM.
 
 Example:
 python build.py \
-    --patients_file ehrshot_in_nhird_patients_v800.json \
+    --patients_file ../data/ehrshot_in_nhird_patients_v800.json \
     --vocab_path vocabulary.json \
-    --out_pkl train_0.8.pkl \
+    --out_pkl ../data/pickle/train_0.8.pkl \
     --score_threshold 0.8 \
-    --block_size 2048 \
-    --default_label 0
+    --block_size 2048
 """
 
+import os
 import argparse
 import json
 import pickle
@@ -28,8 +28,7 @@ def parse_args():
     p.add_argument("--vocab_path", required=True, help="Path to vocabulary.json for code2idx mapping")
     p.add_argument("--out_pkl", default="train.pkl", help="Output pickle filename")
     p.add_argument("--score_threshold", type=float, default=0.8, help="Include patients with avg score >= threshold")
-    p.add_argument("--label_field", default="/data/stevenz3/EHR/benchmark/new_pancan/labeled_patients.csv", help="Optional CSV file: patient_id,label")
-    p.add_argument("--default_label", type=int, default=0, help="Default label if no CSV provided")
+    p.add_argument("--label_field", default="/data/user_data/stevenz3/Domain-Adaptation-EHRSHOT-Benchmark/benchmark/new_pancan/labeled_patients.csv", help="Optional CSV file: patient_id,label")
     p.add_argument("--block_size", type=int, default=2048, help="Maximum sequence length (truncate/pad)")
     p.add_argument("--verbose", action="store_true")
     return p.parse_args()
@@ -79,7 +78,7 @@ def pad_or_trim(seq, max_len, pad_id=0):
     return seq + [pad_id] * (max_len - len(seq))
 
 
-def build_examples(patients, vocab, score_threshold, label_map, default_label, block_size, verbose=False):
+def build_examples(patients, vocab, score_threshold, label_map, block_size, verbose=False):
     examples = []
     skipped = 0
     # print(1)
@@ -148,11 +147,12 @@ def main():
     label_map = load_labels_csv(args.label_field) if args.label_field else {}
 
     examples, skipped = build_examples(
-        patients, vocab, args.score_threshold, label_map, args.default_label, args.block_size, args.verbose
+        patients, vocab, args.score_threshold, label_map, args.block_size, args.verbose
     )
 
     print(f"✅ Selected {len(examples)} patients, skipped {skipped}.")
     if examples:
+        os.makedirs(os.path.dirname(args.out_pkl), exist_ok=True)
         with open(args.out_pkl, "wb") as f:
             pickle.dump(examples, f, protocol=pickle.HIGHEST_PROTOCOL)
         print(f"💾 Saved to {args.out_pkl}")

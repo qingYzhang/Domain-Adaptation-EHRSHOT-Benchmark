@@ -1,28 +1,42 @@
 #!/bin/bash
 
 #SBATCH --job-name=lung_low_risk
-#SBATCH --qos=share
-#SBATCH --partition=share
+#SBATCH --output=lung_low_risk.out
+#SBATCH --error=lung_low_risk.err
+#SBATCH --partition=general
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=200G
-#SBATCH --gpus=1
-#SBATCH --time=12:00:00
-#SBATCH --mail-user=stevenz3@andrew.cmu.edu
-#SBATCH --mail-type=END
+#SBATCH --gres=gpu:L40S:8
+#SBATCH --time=4:00:00
 
+
+echo -e "GPUS = $CUDA_VISIBLE_DEVICES\n"
+nvidia-smi
+echo "CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
 
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate med
 
-# export WANDB_DISABLED="true"
-# export NCCL_DEBUG=INFO
-# export NCCL_P2P_DISABLE=1
+export WANDB_DISABLED="true"
+export NCCL_DEBUG=INFO
+export NCCL_P2P_DISABLE=1
 
 export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
+threshold=0.7
 
-python full_code.py --model_name pythia-160m --train_data_file /data/stevenz3/EHR/pickle/0.85/train.pkl --eval_data_file /data/stevenz3/EHR/pickle/0.85/valid.pkl --pretrained_model_path /data/stevenz3/EHR/CatchFM-160m/lit_model.pth --output_dir /data/stevenz3/EHR/finetune/ --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --learning_rate 1e-5 --warmup_ratio 0.1 --decay_ratio 0.1 --weight_decay 0.01 --max_gradient_norm 1.0 --gradient_accumulation_steps 1 --num_train_epochs 5 --dataloader_num_workers 8 --logging_steps 1 --num_eval_per_epoch 2 --devices 1 --is_test False --seed 35
+srun python3 full_code.py --model_name pythia-160m \
+   --train_data_file /data/user_data/stevenz3/Domain-Adaptation-EHRSHOT-Benchmark/th0_2/train_th0.2_num230737.pkl \
+   --eval_data_file /data/user_data/stevenz3/Domain-Adaptation-EHRSHOT-Benchmark/th0_2/valid_th0.2_num28783.pkl \
+   --pretrained_model_path /data/group_data/cx_healthcare/nhird_pretrained/flop_1e18/pythia-160m/step-4800-ckpt-converted/lit_model.pth \
+   --output_dir /data/user_data/stevenz3/160m_pretained/0.2/ \
+   --per_device_train_batch_size 16 --per_device_eval_batch_size 16 \
+   --learning_rate 1e-5 --warmup_ratio 0.1 --decay_ratio 0.1 \
+   --weight_decay 0.01 --max_gradient_norm 1.0 \
+   --gradient_accumulation_steps 1 --num_train_epochs 5 \
+   --dataloader_num_workers 8 --logging_steps 1 \
+   --num_eval_per_epoch 2 --devices 8 --is_test False --seed 49
 
 # source ~/miniconda3/etc/profile.d/conda.sh &&
 # conda activate med &&
@@ -93,7 +107,19 @@ python full_code.py --model_name pythia-160m --train_data_file /data/stevenz3/EH
 #     --seed $i &&
 
 # # echo "start testing on seed $i"
-
+# python3 full_code.py \
+#     --model_name pythia-160m \
+#     --train_data_file /data/user_data/stevenz3/nhird_data/train.pkl \
+#     --eval_data_file /data/user_data/stevenz3/nhird_data/train.pkl \
+#     --output_dir /data/user_data/stevenz3/160m_pretained \
+#     --per_device_train_batch_size 16 --per_device_eval_batch_size 16 \
+#     --learning_rate 1e-5 --warmup_ratio 0.1 --decay_ratio 0.1 \
+#     --weight_decay 0.01 --max_gradient_norm 1.0 \
+#     --gradient_accumulation_steps 1 --num_train_epochs 5 \
+#    --dataloader_num_workers 8 --logging_steps 1 \
+#     --num_eval_per_epoch 2 --devices 1 \
+#     --is_test True \
+#     --seed 35
 # # python3 finetune/full_code.py \
 # #     --model_name $MODEL_NAME \
 # #     --train_data_file $TRAIN_DATA_FILE \
